@@ -24,7 +24,7 @@ class SimpleAuthFile:
 auth = HTTPBasicAuth()
 auth_enabled = int(os.getenv('AUTH_ENABLED','1')) == 1
 auth_file = SimpleAuthFile(os.getenv('AUTH_FILE','.script-runner-auth'))
-socketio = SocketIO(debug=True, cors_allowed_origins='*')
+socketio = SocketIO(cors_allowed_origins='*')
 
 @auth.verify_password
 def verify_password(username, password):

@@ -52,20 +52,6 @@ flask --app path/to/script-runner run \
 ### Gunicorn
 
 ```
-pip install gunicorn
-gunicorn -w 4 path/to/script-runner
-```
-
-### uWSGI
-
-```
-pip install uwsgi
-uwsgi --http localhost:3000 --master -p 4 -w path/to/script-runner
-```
-
-### Waitress
-
-```
-pip install waitress
-waitress-serve --host localhost --port 3000 path/to/script-runner
+pip install gunicorn eventlet
+gunicorn -b localhost:3000 --worker-class eventlet -w 4 --chdir /path/to script-runner:app
 ```
