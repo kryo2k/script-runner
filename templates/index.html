@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+
+{% block title %}{{page_title}}{% endblock title %}
+
+{% block header %}
+<div class="page-header">
+	<div class="signal float-end">
+		<div id="signal-color" class="signal-color"></div>
+		<div id="signal-text" class="signal-text"></div>
+	</div>
+	<h1 class="display-3">{{page_title}}</h1>
+</div>
+{% endblock header %}
+
+{% block headtag %}
+<script src="/static/socket.io-4.8.1.min.js"></script>
+<style>
+.signal {
+	display: flex;
+	align-items: center;
+	justify-content: stretch;
+	font-size: 12px;
+}
+.signal-color {
+	width: 1em;
+	height: 1em;
+	border: 1px solid black;
+	background-color: silver;
+}
+.signal-color.signal-bad {
+	background-color: red;
+	border-color: pink;
+}
+.signal-color.signal-warn {
+	background-color: orange;
+	border-color: darkorange;
+}
+.signal-color.signal-okay {
+	background-color: green;
+	border-color: darkgreen;
+}
+.signal-text {
+	padding: 0 0.5em;
+}
+.signal-text.signal-bad {}
+.signal-text.signal-warn {}
+.signal-text.signal-okay {}
+ .stdout,
+ .stderr {
+ 	padding: 0.25em;
+ 	white-space: pre-line;
+ 	font-family: monospace;
+ 	min-height: 5em;
+ 	max-height: 15em;
+ 	overflow-y: scroll;
+ 	border: 1px inset;
+ }
+</style>
+{% endblock headtag %}
+
+{% block content %}
+{% include("partial/menu.html") %}
+
+<div class="row">
+	<div class="col-12 col-sm-8 col-lg-10">
+		<h4>OUT</h4>
+		<div id="output-stdout" class="stdout"></div>
+		<h4 class="mt-2">ERR</h4>
+		<div id="output-stderr" class="stderr"></div>
+	</div>
+	<div class="col-12 col-sm-4 col-lg-2">
+		<div id="button-container" class="btn-group-vertical btn-group-lg d-flex mt-3 mt-sm-5"></div>
+		<!-- <span class="text-muted">Action Buttons Here</span> -->
+	</div>
+</div>
+
+<script type="text/javascript">
+(function() {
+
+	if(!window.io)
+		throw new Exception('Socket.IO is not loaded.');
+
+	const
+	SIGNAL_BAD = Symbol(),
+	SIGNAL_WARN = Symbol(),
+	SIGNAL_OKAY = Symbol(),
+	button_actions = [];
+
+	var
+	currentSignal = SIGNAL_BAD;
+
+	function elSignalColor() {
+		return document.getElementById('signal-color');
+	}
+	function elSignalText() {
+		return document.getElementById('signal-text');
+	}
+	function elOutputStdOut() {
+		return document.getElementById('output-stdout');
+	}
+	function elOutputStdErr() {
+		return document.getElementById('output-stderr');
+	}
+	function elButtonContainer() {
+		return document.getElementById('button-container');
+	}
+	function elButtonAction(action) {
+		return document.getElementById('btn-action-'+action);
+	}
+	function clearEl(el) {
+		el.innerText = '';
+	}
+	function appendToEl(el,txt) {
+		el.innerText += txt;
+		el.scrollTop = el.scrollHeight;
+	}
+	function clearStdOut() {
+		clearEl(elOutputStdOut());
+	}
+	function clearStdErr() {
+		clearEl(elOutputStdErr());
+	}
+	function clearOutputs() {
+		clearStdOut();
+		clearStdErr();
+	}
+	function rebuildButtons(socket) {
+		const
+		elCtor = elButtonContainer();
+		elCtor.innerText = ""
+		for(const spec of button_actions) {
+			if(spec === '-') {
+				const
+				sepEl = document.createElement('div');
+				sepEl.classList.add('separator');
+				elCtor.appendChild(sepEl)
+			}
+			else {
+				const
+				[action_code, options] = spec,
+				btnEl = document.createElement('button');
+				const { caption, style, disabled, icon, iconFamily } = options||{};
+				btnEl.id = 'btn-action-'+action_code;
+				btnEl.classList.add('btn')
+				btnEl.classList.add('btn-'+(style||'primary'));
+				btnEl.disabled = !!disabled;
+				btnEl.onclick = (evt) => socket.emit('button_click', action_code);
+
+				if(icon) {
+					const elIcon = document.createElement('i');
+					elIcon.classList.add('fa-' + (iconFamily||"solid"))
+					elIcon.classList.add('fa-' + icon)
+					btnEl.appendChild(elIcon)
+				}
+
+				if(caption) {
+					const elCaption = document.createElement('span');
+					if(icon)
+						elCaption.classList.add('ms-1')
+					elCaption.innerText = caption
+					btnEl.appendChild(elCaption)
+				}
+
+				elCtor.appendChild(btnEl)
+			}
+		}
+	}
+	function updateSignal() {
+		const
+		cnBad = 'signal-bad',
+		cnWarn = 'signal-warn',
+		cnOkay = 'signal-okay',
+		txBad = 'Disconnected',
+		txWarn = 'Unstable Connection',
+		txOkay = 'Connected',
+		elColor = elSignalColor(),
+		elColorCL = elColor.classList,
+		elText = elSignalText();
+
+		if(currentSignal === SIGNAL_BAD) {
+			elColorCL.add(cnBad);
+			elColorCL.remove(cnWarn);
+			elColorCL.remove(cnOkay);
+			elText.innerText = txBad;
+		}
+		else if(currentSignal === SIGNAL_WARN) {
+			elColorCL.remove(cnBad);
+			elColorCL.add(cnWarn);
+			elColorCL.remove(cnOkay);
+			elText.innerText = txWarn;
+		}
+		else if(currentSignal === SIGNAL_OKAY) {
+			elColorCL.remove(cnBad);
+			elColorCL.remove(cnWarn);
+			elColorCL.add(cnOkay);
+			elText.innerText = txOkay;
+		}
+	}
+	function onSocketDisconnection(socket) {
+		currentSignal = SIGNAL_WARN;
+		updateSignal();
+	}
+	function onSocketConnection(socket) {
+		currentSignal = SIGNAL_OKAY;
+		updateSignal();
+	}
+	function onUpdateActions(socket, actions) {
+		button_actions.splice(0, Infinity, ... actions)
+		rebuildButtons(socket);
+	}
+	function onDisableAction(socket, action) {
+		const el = elButtonAction(action);
+		if(!el) return;
+		el.disabled = true;
+	}
+	function onEnableAction(socket, action) {
+		const el = elButtonAction(action);
+		if(!el) return;
+		el.disabled = false;
+	}
+	function onStdOutWrite(socket, txt) {
+		appendToEl(elOutputStdOut(), txt)
+	}
+	function onStdErrWrite(socket, txt) {
+		appendToEl(elOutputStdErr(), txt)
+	}
+	function initialize() {
+		clearOutputs();
+		updateSignal();
+		const socket = io();
+		socket.on('connect', () => onSocketConnection(socket))
+			.on('disconnect', () => onSocketDisconnection(socket))
+			.on('update_actions', onUpdateActions.bind(this, socket))
+			.on('enable_action', onEnableAction.bind(this, socket))
+			.on('disable_action', onDisableAction.bind(this, socket))
+			.on('stdout_write', onStdOutWrite.bind(this, socket))
+			.on('stdout_reset', clearStdOut)
+			.on('stderr_write', onStdErrWrite.bind(this, socket))
+			.on('stderr_reset', clearStdErr);
+	}
+	window.addEventListener('load', initialize);
+}).call(this);
+</script>
+
+{% endblock content %}

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Exception{% endblock title %}
+
+{% block headertext %}Application Exception{% endblock headertext %}
+
+{% block content %}
+
+{% include("partial/menu.html") %}
+
+<p class="text-danger">An exception was caught:</p>
+<pre class="text-danger">{{error}}</pre>
+<p class="mt-3 text-muted">If this problem persists, please notify our support team and share a screenshot of this error.</p>
+{% endblock content %}

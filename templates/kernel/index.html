@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Kernel{% endblock title %}
+
+{% block headertext %}Kernel{% endblock headertext %}
+
+{% block content %}
+{% include("partial/menu.html") %}
+<table class="table">
+	<thead>
+	<tr>
+		<th>Property</th>
+		<th>Value</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td>Run as user</td>
+		<td>{{kernel_thread.user | fmtstr}}</td>
+	</tr>
+	<tr>
+		<td>Interpreter</td>
+		<td>{{kernel_thread.interpreter | fmtstr}}</td>
+	</tr>
+	<tr>
+		<td>Script path</td>
+		<td>{{kernel_thread.scriptPath | fmtstr}}</td>
+	</tr>
+	<tr>
+		<td>Is Busy</td>
+		<td>{{kernel_thread.busy | fmtbool}}</td>
+	</tr>
+	<tr>
+		<td>Was Interrupted</td>
+		<td>{{kernel_thread.interrupted | fmtbool}}</td>
+	</tr>
+	<tr>
+		<td>Last Exit Code</td>
+		<td>{{kernel_thread.lastExitCode | fmtint}}</td>
+	</tr>
+	<tr>
+		<td>Last Execution Started</td>
+		<td>{{kernel_thread.lastExecutedAt | fmtdatetime}}</td>
+	</tr>
+	<tr>
+		<td>Last Run-time (seconds)</td>
+		<td>{{kernel_thread.lastRunTime | fmtfloat}}</td>
+	</tr>
+	</tbody>
+</table>
+{% if not kernel_thread.interpreterExists %}
+<div class="alert alert-warning">The interpreter {{kernel_thread.interpreter | tojson}} does not exist.</div>
+{% endif %}
+{% if kernel_thread.scriptPathExists %}
+<h4>Script Source Code</h4>
+<pre>{{kernel_thread.readSourceCode()}}</pre>
+{% else %}
+<div class="alert alert-warning">The script {{kernel_thread.scriptPath | tojson}} does not exist.</div>
+{% endif %}
+{% endblock content %}

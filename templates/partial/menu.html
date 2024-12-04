@@ -1,0 +1,8 @@
+<ul class="nav nav-tabs mb-3">
+	<li class="nav-item">
+		<a class="nav-link{%if __blueprint__ == 'app_index'%} active{%endif%}" href="{{url_for('app_index.index')}}">Home</a>
+	</li>
+	<li class="nav-item">
+		<a class="nav-link{%if __blueprint__ == 'app_kernel'%} active{%endif%}" href="{{url_for('app_kernel.index')}}">Kernel</a>
+	</li>
+</ul>
