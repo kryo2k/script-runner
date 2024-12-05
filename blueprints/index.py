@@ -43,7 +43,6 @@ def kernelException(ex):
 @socketio.on('connect')
 def client_connect(_auth):
 	"""Event called when client connects via socket.io"""
-	# TODO: work in some kind of authentication.
 	emit('stdout_reset')
 	emit('stdout_write', kernel_thread.stdout)
 	emit('stderr_reset')

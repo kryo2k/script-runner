@@ -131,33 +131,34 @@ class ExecutionThread(Thread):
 			if self._activeProcess is not None:
 				return
 			self._eventManager.trigger('before-process')
-			process = self._activeProcess = subprocess.Popen(
+			with subprocess.Popen(
 				self.__subprocessarguments(),
 				stdout=subprocess.PIPE,
 				stderr=subprocess.PIPE,
 				bufsize=1, # Line-buffered
 				universal_newlines=True  # Text mode
-			)
-			def append_output(pipe, buffer):
-				try:
-					for line in iter(pipe.readline, ''):
-						if buffer == 1:
-							self.__appendOut(line)
-						elif buffer == 2:
-							self.__appendErr(line)
-						else: raise KeyError(f'Invalid buffer key ({buffer})')
-						self._eventManager.trigger('buffer-line', buffer, line)
-				except ValueError:
-					pass
-				finally:
-					pipe.close()
-			stdout_thread = Thread(target=append_output, args=(process.stdout, 1))
-			stderr_thread = Thread(target=append_output, args=(process.stderr, 2))
-			stdout_thread.start()
-			stderr_thread.start()
-			stdout_thread.join()
-			stderr_thread.join()
-			self._lastExitCode = process.wait()
+			) as process:
+				self._activeProcess = process
+				def append_output(pipe, buffer):
+					try:
+						for line in iter(pipe.readline, ''):
+							if buffer == 1:
+								self.__appendOut(line)
+							elif buffer == 2:
+								self.__appendErr(line)
+							else: raise KeyError(f'Invalid buffer key ({buffer})')
+							self._eventManager.trigger('buffer-line', buffer, line)
+					except ValueError:
+						pass
+					finally:
+						pipe.close()
+				stdout_thread = Thread(target=append_output, args=(process.stdout, 1))
+				stderr_thread = Thread(target=append_output, args=(process.stderr, 2))
+				stdout_thread.start()
+				stderr_thread.start()
+				stdout_thread.join()
+				stderr_thread.join()
+				self._lastExitCode = process.wait()
 		except Exception as ex:
 			self._eventManager.trigger('exception', ex)
 		finally:
