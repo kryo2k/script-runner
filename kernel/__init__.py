@@ -218,12 +218,12 @@ class ExecutionThread(Thread):
 		"""Signals the thread to interrupt the current process."""
 		if not self._triggerFlag:
 			return
-		elif not self._running:
+		if not self._running:
 			self._interrupted = True
 			self._triggerFlag = False
 			self._eventManager.trigger('interrupted')
 			return
-		elif self._activeProcess:
+		if self._activeProcess:
 			self._interrupted = True
 			self._activeProcess.kill()
 
