@@ -53,5 +53,7 @@ flask --app path/to/script-runner run \
 
 ```
 pip install gunicorn eventlet
-gunicorn -b localhost:3000 --worker-class eventlet -w 4 --chdir /path/to script-runner:app
+gunicorn -b localhost:3000 --worker-class eventlet -w 1 --chdir /path/to script-runner:app
 ```
+
+Flask SocketIO does not appear to support multiple workers in gunicorn.
