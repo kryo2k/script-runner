@@ -19,25 +19,25 @@ kernel.init_app(app)
 socketio.init_app(app)
 
 @app.template_filter()
-def fmtdatetime(value, format='medium'):
+def fmtdatetime(value, fmt='medium'):
 	"""Jinja2 template function to format datetime.datetime objects."""
 	if not isinstance(value, datetime):
 		return '--'
-	return format_datetime(value.astimezone(tz), format, locale=locale)
+	return format_datetime(value.astimezone(tz), fmt, locale=locale)
 
 @app.template_filter()
-def fmtdate(value, format='medium'):
+def fmtdate(value, fmt='medium'):
 	"""Jinja2 template function to format datetime.date objects."""
 	if not isinstance(value, date):
 		return '--'
-	return format_date(value, format, locale=locale)
+	return format_date(value, fmt, locale=locale)
 
 @app.template_filter()
-def fmttime(value, format='medium'):
+def fmttime(value, fmt='medium'):
 	"""Jinja2 template function to format datetime.time objects."""
 	if not isinstance(value, time):
 		return '--'
-	return format_time(value, format, locale=locale)
+	return format_time(value, fmt, locale=locale)
 
 @app.template_filter()
 def fmtbool(value):
