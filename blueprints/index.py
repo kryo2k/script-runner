@@ -38,10 +38,10 @@ def kernelBufferLine(buffer, line):
 @kernel_thread.on('exception')
 def kernelException(ex):
 	"""Event called when an exception happens."""
-	print(f'Exception', ex)
+	print(f'Exception: {ex}')
 
 @socketio.on('connect')
-def client_connect(auth):
+def client_connect(_auth):
 	"""Event called when client connects via socket.io"""
 	# TODO: work in some kind of authentication.
 	emit('stdout_reset')
@@ -49,8 +49,18 @@ def client_connect(auth):
 	emit('stderr_reset')
 	emit('stderr_write', kernel_thread.stderr)
 	emit('update_actions', [
-		['execute',   { 'caption': 'Execute', 'disabled': kernel_thread.busy, 'style': 'success', 'icon' : 'bolt' } ],
-		['interrupt', { 'caption': 'Interrupt', 'disabled': not kernel_thread.busy, 'style': 'danger', 'icon' : 'hand' } ]
+		['execute',   {
+			'caption': 'Execute',
+			'disabled': kernel_thread.busy,
+			'style': 'success',
+			'icon' : 'bolt'
+		} ],
+		['interrupt', {
+			'caption': 'Interrupt',
+			'disabled': not kernel_thread.busy,
+			'style': 'danger',
+			'icon' : 'hand'
+		} ]
 	])
 
 # @socketio.on('disconnect')
