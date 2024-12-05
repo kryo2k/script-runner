@@ -1,3 +1,4 @@
+"""Module containing objects and classes related to core Kernel logic."""
 import os
 import sys
 import subprocess
@@ -8,20 +9,26 @@ from threading import Thread, Lock
 from collections import deque
 
 class EventManager:
+	"""Holds subscribers of specific event behavior."""
 	def __init__(self):
+		"""Initializes class"""
 		self._handlers = {}
 	def register(self, event_name, handler):
+		"""Registers a new event handler."""
 		if event_name not in self._handlers:
 			self._handlers[event_name] = []
 		self._handlers[event_name].append(handler)
 	def trigger(self, event_name, *args, **kwargs):
+		"""Calls all handlers subcribed to an event."""
 		if event_name in self._handlers:
 			for handler in self._handlers[event_name]:
 				handler(*args, **kwargs)
 
 class ExecutionThread(Thread):
+	"""Thread object responsible for execution logic."""
 	def __init__(self, interpreter, script_path, as_user=None):
-		super().__init__(target=lambda:self.__threadloop(), daemon=True)
+		"""Initializes class"""
+		super().__init__(target=self.__threadloop, daemon=True)
 		self._user = as_user if isinstance(as_user, str) else self.__getcurrentuser()
 		self._eventManager = EventManager()
 		self._interpreter = interpreter
@@ -30,6 +37,7 @@ class ExecutionThread(Thread):
 		self._interrupted = False
 		self._triggerFlag = False
 		self._runLock = Lock()
+		self._runtimeStart = None
 		self._maxBufferSize = 10000
 		self._stdout = deque()
 		self._stderr = deque()
@@ -39,57 +47,76 @@ class ExecutionThread(Thread):
 		self._lastRunTime = None
 	@property
 	def needsSudo(self):
+		"""Virtual property which determines if SUDO should be used or not."""
 		return self._user != self.__getcurrentuser()
 	@property
 	def user(self):
+		"""User whom task should be executed as."""
 		return self._user
 	@property
 	def interpreter(self):
+		"""Interpreter that should be used to execute configured script."""
 		return self._interpreter
 	@property
 	def interpreterExists(self):
+		"""Virtual property which determines if interpreter exists or not."""
 		return os.path.exists(self._interpreter)
 	@property
 	def scriptPath(self):
+		"""Script path that should be used for execution."""
 		return self._scriptPath
 	@property
 	def scriptPathExists(self):
+		"""Virtual property which determines if script path exists or not."""
 		return os.path.exists(self._scriptPath)
 	@property
 	def stdout(self):
+		"""Dumps the stdout buffer as a string."""
 		return ''.join(self._stdout)
 	@property
 	def stderr(self):
+		"""Dumps the stderr buffer as a string."""
 		return ''.join(self._stderr)
 	@property
 	def busy(self):
+		"""Virtual property which determines if kernel thread is busy or not."""
 		return self._triggerFlag or self._running
 	@property
 	def interrupted(self):
+		"""Provides access to internal interrupted state."""
 		return self._interrupted
 	@property
 	def lastExecutedAt(self):
+		"""Provides access to internal last executed at state."""
 		return self._lastExecutedAt
 	@property
 	def lastRunTime(self):
+		"""Provides access to internal last runtime state."""
 		return self._lastRunTime
 	@property
 	def lastExitCode(self):
+		"""Provides access to internal last exit code state."""
 		return self._lastExitCode
 	@property
 	def runLock(self):
+		"""Provides access to lock used for run flow control."""
 		return self._runLock
 	def __appendBuffer(self, buf, s):
+		"""Internal method for appending to a provided buffer."""
 		buf.extend(s)
 		while sum(len(chunk) for chunk in buf) > self._maxBufferSize:
 			buf.popleft()
 	def __appendOut(self, s):
+		"""Internal method for appending stdout buffer."""
 		self.__appendBuffer(self._stdout, s)
 	def __appendErr(self, s):
+		"""Internal method for appending stderr buffer."""
 		self.__appendBuffer(self._stderr, s)
 	def __getcurrentuser(self):
+		"""Internal method to get current logged in user."""
 		return getpass.getuser()
 	def __subprocessarguments(self):
+		"""Internal method to generate arguments needed for current settings."""
 		args = []
 		if self.needsSudo:
 			args.append('sudo')
@@ -99,6 +126,7 @@ class ExecutionThread(Thread):
 		args.append(self._scriptPath)
 		return args
 	def __subprocessexecute(self):
+		"""Internal method execute with current settings."""
 		try:
 			if self._activeProcess is not None:
 				return
@@ -134,7 +162,7 @@ class ExecutionThread(Thread):
 			self._eventManager.trigger('exception', ex)
 		finally:
 			self._lastRunTime = (time.time_ns() - self._runtimeStart) / (10 ** 9)
-			del self._runtimeStart
+			self._runtimeStart = None
 			if self._interrupted:
 				self._eventManager.trigger('interrupted')
 			self._eventManager.trigger('after-process')
@@ -151,13 +179,15 @@ class ExecutionThread(Thread):
 						self._triggerFlag = False
 			time.sleep(0.1)
 	def on(self, event_name):
+		"""Decorator function to get access to kernel events."""
 		def decorator(func):
 			self._eventManager.register(event_name, func)
 			return func
 		return decorator
 	def readSourceCode(self):
+		"""Method to dump the configured script's source code."""
 		try:
-			with open(self._scriptPath) as f:
+			with open(self._scriptPath, encoding="utf-8") as f:
 				return f.read()
 		except FileNotFoundError:
 			return ""
@@ -165,21 +195,27 @@ class ExecutionThread(Thread):
 			print(f'Script source read error: {ex}', file=sys.stderr)
 			return ""
 	def clearOutputStandard(self):
+		"""Clears the stdout buffer."""
 		self._stdout = b''
 	def clearOutputError(self):
+		"""Clears the stderr buffer."""
 		self._stderr = b''
 	def clearOutputs(self):
+		"""Clears both stderr and stdout buffers."""
 		self.clearOutputStandard()
 		self.clearOutputError()
 	def execute(self):
+		"""Signals the thread to execute with current settings."""
 		with self._runLock:
-			if self.busy: return
+			if self.busy:
+				return
 			self._runtimeStart = time.time_ns()
 			self._lastExecutedAt = datetime.now()
 			self._eventManager.trigger('execute')
 			self._interrupted = False
 			self._triggerFlag = True
 	def interrupt(self):
+		"""Signals the thread to interrupt the current process."""
 		if not self._triggerFlag:
 			return
 		elif not self._running:
@@ -199,9 +235,9 @@ thread = ExecutionThread(
 thread.start()
 
 def init_app(app):
+	"""Bootstraps the kernel with current flask application."""
 	@app.context_processor
 	def globalvariables():
-		global thread
-		return dict(
-			kernel_thread=thread
-		)
+		return {
+			'kernel_thread' : thread
+		}
