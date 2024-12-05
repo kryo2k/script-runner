@@ -1,3 +1,5 @@
+"""Blueprint initializer module. Loads all active blueprint modules."""
+
 import os
 from flask import Blueprint, request, send_file, render_template
 from . import index, kernel
